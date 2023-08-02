@@ -5,13 +5,25 @@ using UnityEngine;
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed;
+    private float moveSpeed;
+    public float sprintSpeed;
+    public float walkSpeed;
+
     public float groundDrag;
 
     [Header("Ground Check")]
     public float playerHeight;
     public LayerMask whatIsGround;
     bool grounded;
+
+    [Header("Crouching")]
+    public float crouchSpeed;
+    public float crouchYscale;
+    public float startYscale;
+
+    [Header("Keybinds")]
+    public KeyCode sprintKey = KeyCode.LeftShift;
+    public KeyCode crouchKey = KeyCode.LeftControl;
 
     public Transform orientation;
 
@@ -22,7 +34,15 @@ public class PlayerMovement : MonoBehaviour
 
     Rigidbody rb;
 
+    public MovementState state;
 
+    public enum MovementState
+    {
+        walking,
+        sprinting,
+        crouching,
+        air
+    }
 
 
     void Start()
@@ -30,6 +50,7 @@ public class PlayerMovement : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
 
+        startYscale = transform.localScale.y;
     }
 
     // Update is called once per frame
@@ -39,16 +60,15 @@ public class PlayerMovement : MonoBehaviour
 
         MyInput();
         SpeedControl();
+        StateHandler();
 
         if (grounded)
         {
             rb.drag = groundDrag;
-            Debug.Log("Grounded!");
         }
         else
         {
             rb.drag = 0;
-            Debug.Log("Not Grounded!");
         }
     }
 
@@ -61,6 +81,42 @@ public class PlayerMovement : MonoBehaviour
     {
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
+
+        if (Input.GetKeyDown(crouchKey)){
+            transform.localScale = new Vector3(transform.localScale.x,crouchYscale,transform.localScale.z);
+            rb.AddForce(Vector3.down * 5f, ForceMode.Impulse);
+        }
+        if (Input.GetKeyUp(crouchKey)){
+            transform.localScale = new Vector3(transform.localScale.x, startYscale, transform.localScale.z);
+        }
+    }
+
+    private void StateHandler() {
+
+        if (Input.GetKey(crouchKey)){
+            state = MovementState.crouching;
+            moveSpeed = crouchSpeed;
+            Debug.Log("crouching");
+        }
+
+
+        if (grounded && Input.GetKey(sprintKey) && state != MovementState.crouching){
+            state = MovementState.sprinting;
+            moveSpeed = sprintSpeed;
+            Debug.Log("sprinting");
+        }
+
+        else if (grounded && state != MovementState.crouching)
+        {
+            state = MovementState.walking;
+            moveSpeed = walkSpeed;
+            Debug.Log("walking");
+        }
+        else
+        {
+            state = MovementState.air;
+            Debug.Log("air");
+        }
     }
 
     private void MovePlayer()
